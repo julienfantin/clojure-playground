@@ -37,6 +37,16 @@
   (let [bindings (cons [(gensym) nil] (partition 2 bindings))]
     `(~(let-series- bindings forms) nil)))
 
+(defn- ensure-unique-bindings [symbols]
+  "Throw an Exception if symbols are not unique."
+  (when-not (= (count (set symbols))
+               (count symbols))
+    (throw (IllegalArgumentException. "let-parallel requires unique binding-forms."))))
+
+(defn- sym->index-map [syms]
+  "Turn a seq of symbols into a map of symbols to index."
+  (into {} (map-indexed #(identity [%2 %1]) syms)))
+
 (defmacro let-parallel [bindings & forms]
   "Parallel cps let form.
 
@@ -63,18 +73,16 @@
   "
   (let [bindings (partition 2 bindings)
         syms (vec (map first bindings))]
-    (when-not (= (count (set syms))
-                 (count syms))
-      (throw (Exception. "let-parallel requires unique binding-forms.")))
-    `(let [mappings# (into {} (map-indexed #(identity [%2 %1]) '~syms))
+    (ensure-unique-bindings syms)
+    `(let [mappings# '~(sym->index-map syms)
            returns# (atom {})
-           cont# (fn ~(vec syms)
-                   (do ~@forms))
+           cont# (fn ~(vec syms) (do ~@forms))
            ~'sub-cont# (fn [sym# result#]
+                         ;; Collect return value
                          (swap! returns# assoc (get mappings# sym#) result#)
+                         ;; Evaluate main continuation if done
                          (when (= (count @returns#) (count mappings#))
-                           (apply cont#
-                                  (vals (into (sorted-set) @returns#)))))]
+                           (apply cont# (vals (into (sorted-set) @returns#)))))]
        ~@(map (fn [[sym expr]]
                 `(~expr (partial ~'sub-cont# '~sym)))
               bindings)
