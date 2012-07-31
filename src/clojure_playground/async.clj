@@ -70,13 +70,13 @@
            returns# (atom {})
            cont# (fn ~(vec syms)
                    (do ~@forms))
-           ~'sub-cont (fn [sym# result#]
-                        (swap! returns# assoc (get mappings# sym#) result#)
-                        (when (= (count @returns#) (count mappings#))
-                          (apply cont#
-                                 (vals (into (sorted-set) @returns#)))))]
+           ~'sub-cont# (fn [sym# result#]
+                         (swap! returns# assoc (get mappings# sym#) result#)
+                         (when (= (count @returns#) (count mappings#))
+                           (apply cont#
+                                  (vals (into (sorted-set) @returns#)))))]
        ~@(map (fn [[sym expr]]
-                `(~expr (partial ~'sub-cont '~sym)))
+                `(~expr (partial ~'sub-cont# '~sym)))
               bindings)
        nil)))
 
