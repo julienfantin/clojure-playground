@@ -33,7 +33,10 @@
 
 (defmacro let-parallel [bindings & forms]
   (let [bindings (partition 2 bindings)
-        syms (map first bindings)]
+        syms (vec (map first bindings))]
+    (when-not (= (count (set syms))
+                 (count syms))
+      (throw (Exception. "let-parallel requires unique binding-forms.")))
     `(let [mappings# (into {} (map-indexed #(identity [%2 %1]) '~syms))
            returns# (atom {})
            cont# (fn ~(vec syms)
