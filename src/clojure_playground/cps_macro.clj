@@ -1,11 +1,11 @@
 (ns clojure-playground.cps-macro)
 
-(defn- doasync- [bindings forms]
+(defn- let-series- [bindings forms]
   (let [[sym _] (first bindings)
         [_ expr] (second bindings)]
     `(fn [~sym]
        ~(if expr
-          `(~expr ~(doasync- (next bindings) forms))
+          `(~expr ~(let-series- (next bindings) forms))
           `(do ~@forms))
        nil)))
 
@@ -18,18 +18,18 @@
   evaluate to a function of one argument, the current continuation. Each
   expression is responsible for applying the continuation to its result.
 
-  doasync will always return nil, thus `forms` should only be used for
+  let-series will always return nil, thus `forms` should only be used for
   side-effects.
 
-  (doasync [a (fn [c] (c 1))
-            b (fn [c] (c (inc a)))]
-           (println b))
+  (let-series [a (fn [c] (c 1))
+               b (fn [c] (c (inc a)))]
+              (println b))
   ;; nil
   ;; => 2
   "
   [bindings & forms]
   (let [bindings (cons [(gensym) nil] (partition 2 bindings))]
-    `(~(doasync- bindings forms) nil)))
+    `(~(let-series- bindings forms) nil)))
 
 (defmacro let-parallel [bindings & forms]
   (let [bindings (partition 2 bindings)
