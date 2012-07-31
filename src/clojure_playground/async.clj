@@ -1,4 +1,4 @@
-(ns clojure-playground.cps-macro)
+(ns clojure-playground.async)
 
 (defn- let-series- [bindings forms]
   (let [[sym _] (first bindings)
@@ -10,16 +10,22 @@
        nil)))
 
 (defmacro let-series
-  "Continuation passing style let form.
+  "Serial cps let form.
 
   Bindings => binding-form cps-expr
 
   Destructuring is supported in `bindings`, but the cps-exprs must
-  evaluate to a function of one argument, the current continuation. Each
+  evaluate to functions of one argument, the current continuation. Each
   expression is responsible for applying the continuation to its result.
 
-  let-series will always return nil, thus `forms` should only be used for
-  side-effects.
+  `bindings` are performed sequencially as each one applies its
+  continuation.
+
+  `forms` will be evaluated in an implicit do block after
+  the last continuation is applied.
+
+  `forms` should only be used for side-effects, as let-series will
+  always return nil.
 
   (let-series [a (fn [c] (c 1))
                b (fn [c] (c (inc a)))]
@@ -32,6 +38,29 @@
     `(~(let-series- bindings forms) nil)))
 
 (defmacro let-parallel [bindings & forms]
+  "Parallel cps let form.
+
+  Bindings => binding-form cps-expr
+
+  Destructuring is supported in `bindings`, but the cps-exprs must
+  evaluate to functions of one argument, the current continuation. Each
+  expression is responsible for applying the continuation to its result.
+
+  `bindings` are performed concurrently, and thus cannot refer to other
+  binding-forms.
+
+  `forms` will be evaluated in an implicit do after all the
+  continuations have been applied.
+
+  `forms` should only be used for side-effects, as let-parallel will
+  always return nil.
+
+  (let-parallel [a (fn [c] (c 1))
+                 b (fn [c] (c 2)))]
+              (println b))
+  ;; nil
+  ;; => 2
+  "
   (let [bindings (partition 2 bindings)
         syms (vec (map first bindings))]
     (when-not (= (count (set syms))
