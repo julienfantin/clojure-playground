@@ -1,4 +1,11 @@
-(ns clojure-playground.async)
+(ns clojure-playground.async
+  ^{:doc
+    "Usage in ClojureScript (see docstrings for examples):
+     
+     (ns my.ns
+       (:require-macros [clojure-playground.async :as a]))
+
+     (a/let-series ...)"})
 
 (defn- let-series- [bindings forms]
   (let [[sym _] (first bindings)
@@ -9,16 +16,17 @@
           `(do ~@forms))
        nil)))
 
-(defmacro let-series
-  "Serial cps let form.
+(defmacro let-series [bindings & forms]
+  "Serial let form.
 
   Bindings => binding-form cps-expr
 
   Destructuring is supported in `bindings`, but the cps-exprs must
-  evaluate to functions of one argument, the current continuation. Each
-  expression is responsible for applying the continuation to its result.
+  evaluate to functions of one argument, which will be called with the
+  current continuation. Each expression is responsible for applying the
+  continuation to its result.
 
-  `bindings` are performed sequencially as each one applies its
+  `bindings` are performed sequentially as each one applies its
   continuation.
 
   `forms` will be evaluated in an implicit do block after
@@ -33,7 +41,6 @@
   ;; nil
   ;; => 2
   "
-  [bindings & forms]
   (let [bindings (cons [(gensym) nil] (partition 2 bindings))]
     `(~(let-series- bindings forms) nil)))
 
@@ -48,13 +55,14 @@
   (into {} (map-indexed #(identity [%2 %1]) syms)))
 
 (defmacro let-parallel [bindings & forms]
-  "Parallel cps let form.
+  "Parallel let form.
 
   Bindings => binding-form cps-expr
 
   Destructuring is supported in `bindings`, but the cps-exprs must
-  evaluate to functions of one argument, the current continuation. Each
-  expression is responsible for applying the continuation to its result.
+  evaluate to functions of one argument, which will be called with the
+  current continuation. Each expression is responsible for applying the
+  continuation to its result.
 
   `bindings` are performed concurrently, and thus cannot refer to other
   binding-forms.
@@ -106,6 +114,4 @@
       ((fn [c]
          (future (do
                    (Thread/sleep 2000)
-                   (c 2)))) (partial sub-continuation 'b))))
-
-  )
+                   (c 2)))) (partial sub-continuation 'b)))))
